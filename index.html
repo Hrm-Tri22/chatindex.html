@@ -11,6 +11,7 @@
             height: 100%;
             overflow: hidden;
             font-family: 'Courier New', monospace;
+            background-color: black;
         }
         #matrix {
             position: absolute;
@@ -18,7 +19,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: black;
+            z-index: 1;
         }
         #message {
             position: absolute;
@@ -28,16 +29,22 @@
             color: #00ff00;
             font-size: 4em;
             display: none;
+            z-index: 2;
+            text-align: center;
         }
         #name-prompt, #message-board {
             display: none;
             padding: 20px;
             max-width: 800px;
             margin: 0 auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            z-index: 2;
+            position: relative;
         }
         .message {
-            background-color: #f0f0f0;
-            border: 1px solid #ddd;
+            background-color: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 5px;
@@ -46,11 +53,14 @@
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
+            background-color: black;
+            color: #00ff00;
+            border: 1px solid #00ff00;
         }
         #submit-name, #submit-message {
             padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
+            background-color: #00ff00;
+            color: black;
             border: none;
             cursor: pointer;
         }
@@ -71,7 +81,31 @@
         <button id="submit-message">Post Message</button>
     </div>
 
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
     <script>
+        // Your web app's Firebase configuration
+        // Replace with your actual Firebase config
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Get a reference to the database service
+        const database = firebase.database();
+
         const canvas = document.getElementById('matrix');
         const context = canvas.getContext('2d');
 
@@ -111,11 +145,9 @@
             }
         };
 
-        let matrixInterval = setInterval(draw, 30);
+        setInterval(draw, 30);
 
         setTimeout(() => {
-            clearInterval(matrixInterval);
-            document.getElementById('matrix').style.display = 'none';
             document.getElementById('message').style.display = 'block';
             setTimeout(() => {
                 document.getElementById('message').style.display = 'none';
@@ -130,6 +162,7 @@
             displayName = nameInput.value.trim() || 'Anonymous';
             document.getElementById('name-prompt').style.display = 'none';
             document.getElementById('message-board').style.display = 'block';
+            loadMessages();
         });
 
         document.getElementById('submit-message').addEventListener('click', function() {
@@ -142,11 +175,29 @@
         });
 
         function addMessage(message) {
+            const newMessageRef = database.ref('messages').push();
+            newMessageRef.set({
+                name: displayName,
+                message: message,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+
+        function loadMessages() {
+            const messagesRef = database.ref('messages');
+            messagesRef.on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                displayMessage(data.name, data.message);
+            });
+        }
+
+        function displayMessage(name, message) {
             const messagesDiv = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
-            messageElement.textContent = `${displayName}: ${message}`;
+            messageElement.textContent = `${name}: ${message}`;
             messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
     </script>
 </body>
